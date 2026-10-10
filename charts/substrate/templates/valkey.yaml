@@ -100,7 +100,15 @@ spec:
       containers:
       - name: valkey
         image: {{ .Values.images.valkey }}
-        command: ["valkey-server", "/etc/valkey/valkey.conf"]
+        # Announce the CURRENT pod IP. nodes.conf lives on the PVC: without this, a rescheduled
+        # pod (node rotation, Karpenter consolidation) keeps announcing its pre-move IP as
+        # `myself`, and cluster clients that refresh their slot map from it dial a dead address.
+        command: ["valkey-server", "/etc/valkey/valkey.conf", "--cluster-announce-ip", "$(POD_IP)"]
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         ports:
         - name: valkey
           containerPort: 6379
